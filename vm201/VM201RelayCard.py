@@ -6,14 +6,13 @@ Software representation of the VM201 Ethernet Relay Card.
 Author: Timo Halbesma
 Date: October 11th, 2014
 Version: 2.0: Read TCP responses; send TCP packet to login and request status.
+Version: 2.1: Adapt to Python3
 '''
 
-
-from sys import exit
+import sys
 from socket import socket, AF_INET, SOCK_STREAM, gaierror, error, gethostbyname
 from socket import timeout
 from struct import pack
-
 
 # http://txt.arboreus.com/2013/03/13/pretty-print-tables-in-python.html
 from tabulate import tabulate
@@ -21,7 +20,6 @@ from tabulate import tabulate
 from Channel import Channel
 from TCPPacketHandler import TCPPacketHandler
 from Printer import Printer
-
 
 class VM201RelayCard(object):
     def __init__(self, host, port=9760, username=None, password=None,verbose=True):
@@ -104,7 +102,7 @@ class VM201RelayCard(object):
         try:
             return [key for key in self.commands if
                     self.commands[key] == cmd_byte][0]
-        except KeyError, e:
+        except KeyError as e:
             msg = 'Error: value \'{0}\' not found'\
                   .format(cmd_byte) + ' in VM201.commands dict!\n', e
             self.display.add_tcp_msg(msg)
@@ -134,7 +132,7 @@ class VM201RelayCard(object):
                 .format('connect_to_vm201')
             self.display.add_tcp_msg(msg)
             exit()
-        except error, e:
+        except error as e:
             msg = 'Error in {0}: {1}'\
                 .format('connect_to_vm201', e)
             msg += '\nPerhaps hostname or port incorrect? Please double check.'
@@ -146,7 +144,7 @@ class VM201RelayCard(object):
 
         try:
             packet = self.socket.recv(length)
-        except Exception, e:
+        except Exception as e:
             # I have no idea whatsoever what could go wrong =)...
             raise
             msg = 'Error: something went wrong in recv function in {0}!'\
@@ -215,7 +213,7 @@ class VM201RelayCard(object):
         for i in range(1, 10):
             try:
                 packet = self.socket.recv(length)
-            except Exception, e:
+            except Exception as e:
                 # I have no idea whatsoever what could go wrong =)...
                 raise
                 msg = 'Error: something went wrong in recv function in {0}!'\
@@ -247,7 +245,7 @@ class VM201RelayCard(object):
 
         try:
             packet = self.socket.recv(length)
-        except Exception, e:
+        except Exception as e:
             # I have no idea whatsoever what could go wrong =)...
             raise
             msg = 'Error: something went wrong in recv function in {0}!'\
@@ -307,7 +305,12 @@ class VM201RelayCard(object):
     def string_of_change(self, channel_id):
         ''' Return zero for all channels but channel_id '''
         byte_string = '0' * (8 - channel_id) + '1' + '0' * (channel_id - 1)
-        return (pack('B', int(byte_string, 2)))
+        
+        ret = (pack('B', int(byte_string, 2)))
+        if sys.version_info > (3,):
+            ret = ret.decode('ascii', 'replace')
+
+        return ret
 
     def on_off_toggle(self, cmd, channel_id):
         '''
@@ -320,6 +323,9 @@ class VM201RelayCard(object):
 
         change = self.string_of_change(channel_id)
         packet = self.tcp_handler.encode(self, cmd, change, channel_id)
+
+        if sys.version_info > (3,):
+            packet = packet.encode('ascii', 'replace')
         self.socket.send(packet)
 
         # If and only if the status has changed, a CMD_STATUS is send by the
@@ -329,9 +335,9 @@ class VM201RelayCard(object):
             self.display.add_tcp_msg('Waiting for CMD_STATUS')
             self.receive_status_of_channels()
             # packet = self.socket.recv(8)
-        except timeout, e:
+        except timeout as e:
             self.display.add_tcp_msg('Timeout -> channel unchanged')
-        except Exception, e:
+        except Exception as e:
             self.display.add_tcp_msg('Error: unknown')
             raise e
         # else:

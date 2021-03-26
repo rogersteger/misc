@@ -16,7 +16,7 @@ def main():
     sw.status()
     
     sw.on_off_toggle('CMD_ON', 7)
-    time.sleep(10)
+    time.sleep(5)
     sw.on_off_toggle('CMD_OFF', 7)
     
 #------------------------------------------------------------------------------

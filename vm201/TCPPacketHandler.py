@@ -11,7 +11,6 @@ Version: 2.0: Implemented decode; added encode.
 import sys
 import struct
 
-
 # https://stackoverflow.com/questions/2184181/decoding-tcp-packets-using-python
 # NB in the end only inspired by this solution. Hardly any code remains.
 class TCPPacketHandler(object):
@@ -27,8 +26,11 @@ class TCPPacketHandler(object):
         @param s: string of bytes; len(s) = number of bytes.
         @return: chechsum one byte stored in a string.
         '''
-
-        return struct.pack('1B', (-(sum(ord(c) for c in s) % 256) & 0xFF))
+        
+        ret = struct.pack('1B', (-(sum(ord(c) for c in s) % 256) & 0xFF))
+        if sys.version_info > (3,):
+            ret = ret.decode('ascii', 'replace')
+        return ret
 
     def checksum_is_valid(self, packet):
         ''' The last byte is ETX; secondlast byte is the checksum'''
@@ -42,7 +44,11 @@ class TCPPacketHandler(object):
         @param packet: string containing the bytes; TCP packet received.
         @return: list of integer values of the bytes. If checksum fails: None.
         '''
-
+        
+        if sys.version_info > (3,):
+            packet_bin = packet
+            packet = packet.decode('ascii', 'replace')
+                
         cmd_byte = packet[2]
         length = ord(packet[1])
 
@@ -61,7 +67,11 @@ class TCPPacketHandler(object):
             vm201.display.add_tcp_msg(msg)
             # sys.exit()
 
-        return list(struct.unpack('B'*length, packet))
+        if sys.version_info > (3,):
+            ret = struct.unpack('B'*length, packet_bin)
+        else:
+            ret = struct.unpack('B'*length, packet)
+        return list(ret)
 
     def encode(self, vm201, cmd, data_x='', channel_id=''):
         '''
@@ -75,6 +85,9 @@ class TCPPacketHandler(object):
 
         stx = vm201.commands['STX']
         length = struct.pack('1B', vm201.commands['LEN_'+cmd])
+        if sys.version_info > (3,):
+            length = length.decode('ascii', 'replace')
+
         cmd_byte = vm201.commands[cmd]
 
         # bool('') -> False. Encode called without data_x -> skip this block.
@@ -83,6 +96,7 @@ class TCPPacketHandler(object):
             data_x += (9 - len(data_x)) * '\x00'
 
         # If data_x is not given, adding data_x = '' does not alter checksum.
+        
         checksum = self.calculate_checksum(stx + length + cmd_byte + data_x)
         etx = vm201.commands['ETX']
 

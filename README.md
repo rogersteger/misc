@@ -20,6 +20,7 @@ Script to communicate with VM201 ethernet relay card.
 http://www.vellemanprojects.eu/products/view/?country=be&lang=en&id=407510
 http://www.velleman.eu/downloads/0/infosheets/datasheet_vm201-uk.pdf
 http://forum.velleman.eu/viewtopic.php?f=37&t=8598&p=33039&hilit=VM201+protocol
+Supports Python3 and Python2
 
 **CARD_to_DataNose.sh**
 

@@ -242,7 +242,7 @@ class VM201RelayCard(object):
         '''
 
         length = self.commands['LEN_CMD_STATUS']
-
+        print(length)
         try:
             packet = self.socket.recv(length)
         except Exception as e:
@@ -253,6 +253,8 @@ class VM201RelayCard(object):
             self.display.add_tcp_msg(msg)
             exit()
 
+        print("packet:")
+        print(packet)
         response = self.tcp_handler.decode(self, packet)
 
         self.channel_string = bin(response[3])
@@ -323,7 +325,6 @@ class VM201RelayCard(object):
 
         change = self.string_of_change(channel_id)
         packet = self.tcp_handler.encode(self, cmd, change, channel_id)
-
         if sys.version_info > (3,):
             packet = packet.encode('ascii', 'replace')
         self.socket.send(packet)
@@ -332,9 +333,10 @@ class VM201RelayCard(object):
         # server. But this we do not know, so we set a timeout and wait...
         self.socket.settimeout(3.0)
         try:
-            self.display.add_tcp_msg('Waiting for CMD_STATUS')
-            self.receive_status_of_channels()
-            # packet = self.socket.recv(8)
+            #self.display.add_tcp_msg('Waiting for CMD_STATUS')
+            #self.receive_status_of_channels()
+            self.display.add_tcp_msg('Waiting for CMD_NAME')
+            self.receive_names_of_channels()
         except timeout as e:
             self.display.add_tcp_msg('Timeout -> channel unchanged')
         except Exception as e:

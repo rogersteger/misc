@@ -48,10 +48,9 @@ class TCPPacketHandler(object):
         if sys.version_info > (3,):
             packet_bin = packet
             packet = packet.decode('ascii', 'replace')
-                
+        
         cmd_byte = packet[2]
         length = ord(packet[1])
-
         vm201.display.add_tcp_msg('Received {0}'
                                   .format(vm201.lookup(cmd_byte)))
 

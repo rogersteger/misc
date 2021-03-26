@@ -13,11 +13,12 @@ def main():
     
     sw = VM201RelayCard('10.62.33.22')
     sw.connect()
-    sw.status()
+    #sw.status()
     
     sw.on_off_toggle('CMD_ON', 7)
-    time.sleep(5)
-    sw.on_off_toggle('CMD_OFF', 7)
+    #sw.on_off_toggle('CMD_ON', 7)
+    #time.sleep(5)
+    #sw.on_off_toggle('CMD_OFF', 7)
     
 #------------------------------------------------------------------------------
 if __name__ == "__main__":

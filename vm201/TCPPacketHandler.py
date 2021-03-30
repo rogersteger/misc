@@ -6,6 +6,7 @@ TCP packet handler to decode and encode packets; calculate and verify checksum.
 Author: Timo Halbesma
 Date: October 11th, 2014
 Version: 2.0: Implemented decode; added encode.
+Version: 2.1: Support Python3
 '''
 
 import sys
@@ -27,9 +28,11 @@ class TCPPacketHandler(object):
         @return: chechsum one byte stored in a string.
         '''
         
-        ret = struct.pack('1B', (-(sum(ord(c) for c in s) % 256) & 0xFF))
+        byte_string = (-(sum(ord(c) for c in s) % 256) & 0xFF)
+        ret = struct.pack('1B', byte_string)
+        
         if sys.version_info > (3,):
-            ret = ret.decode('ascii', 'replace')
+            ret = ret.decode('charmap')
         return ret
 
     def checksum_is_valid(self, packet):
@@ -47,12 +50,11 @@ class TCPPacketHandler(object):
         
         if sys.version_info > (3,):
             packet_bin = packet
-            packet = packet.decode('ascii', 'replace')
-        
+            packet = packet.decode('charmap')
+
         cmd_byte = packet[2]
         length = ord(packet[1])
-        vm201.display.add_tcp_msg('Received {0}'
-                                  .format(vm201.lookup(cmd_byte)))
+        vm201.display.add_tcp_msg('Received {0}'.format(vm201.lookup(cmd_byte)))
 
         if not self.checksum_is_valid(packet):
             msg = 'Error: in TCPPacketHandler.decode(); invalid checksum!'
@@ -82,11 +84,15 @@ class TCPPacketHandler(object):
         @ return string containing the bytes; TCP packet ready to transmit.
         '''
 
+        if data_x != '' and sys.version_info > (3,):
+            data_x = data_x.decode('charmap')
+        
         stx = vm201.commands['STX']
-        length = struct.pack('1B', vm201.commands['LEN_'+cmd])
-        if sys.version_info > (3,):
-            length = length.decode('ascii', 'replace')
+        length = struct.pack('1B', vm201.commands['LEN_'+ cmd])
 
+        if sys.version_info > (3,):
+            length = length.decode('charmap')
+        
         cmd_byte = vm201.commands[cmd]
 
         # bool('') -> False. Encode called without data_x -> skip this block.
@@ -102,4 +108,10 @@ class TCPPacketHandler(object):
         vm201.display.add_tcp_msg('Sending {0} {1}'.format(cmd, channel_id))
 
         # If data_x is not given, adding data_x = '' does not alter packet.
-        return stx + length + cmd_byte + data_x + checksum + etx
+        ret = stx + length + cmd_byte + data_x + checksum + etx
+        
+        #Encode to binary for Python 3
+        if sys.version_info > (3,):
+            ret = ret.encode('charmap')
+        return ret
+

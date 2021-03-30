@@ -6,7 +6,7 @@ Software representation of the VM201 Ethernet Relay Card.
 Author: Timo Halbesma
 Date: October 11th, 2014
 Version: 2.0: Read TCP responses; send TCP packet to login and request status.
-Version: 2.1: Adapt to Python3
+Version: 2.1: Support Python3 and switch on/off more than one channel
 '''
 
 import sys
@@ -242,7 +242,6 @@ class VM201RelayCard(object):
         '''
 
         length = self.commands['LEN_CMD_STATUS']
-        print(length)
         try:
             packet = self.socket.recv(length)
         except Exception as e:
@@ -253,8 +252,6 @@ class VM201RelayCard(object):
             self.display.add_tcp_msg(msg)
             exit()
 
-        print("packet:")
-        print(packet)
         response = self.tcp_handler.decode(self, packet)
 
         self.channel_string = bin(response[3])
@@ -272,48 +269,31 @@ class VM201RelayCard(object):
         self.channels[9].status = self.input_status
         self.channels[9].timer = '-'
 
-    def send_status_request(self):
-        '''
-        Expected by the server
-        <STX><5><CMD_STATUS_REQ><CHECKSUM><ETX>
-        '''
-
-        packet = self.tcp_handler.encode(self, 'CMD_STATUS_REQ')
-        self.socket.send(packet)
-
     def status(self):
         self.receive_names_of_channels()
         self.receive_status_of_channels()
         self.display.update_state(str(self))
 
-    def update_string(self, s, channel_id):
-        '''
-        NB channel bits 7...0 = channels 8...1
-        calculate new channel/input string where only channel_id is flipped!
-
-        @param s: str, either channel or input string
-        @param channel_id: int; which channel should be changed?
-        @return str; newly generated channel/input string.
-        '''
-
-        new_bit = ''
-        if s[-channel_id] == '0':
-            new_bit = '1'
-        elif s[-channel_id] == '1':
-            new_bit = '0'
-
-        return s[: -channel_id] + new_bit + s[len(s) - channel_id + 1: len(s)]
-
     def string_of_change(self, channel_id):
         ''' Return zero for all channels but channel_id '''
+
         byte_string = '0' * (8 - channel_id) + '1' + '0' * (channel_id - 1)
+        return (pack('B', int(byte_string, 2)))
+
+    def string_of_change_list(self, channel_id):
+        ''' Return zero for all channels but channel_id '''
+
+        byte_string = ''
+        for i in range (0,8):
+            set = False
+            for j in range (0, len(channel_id)):
+                if ((8 - channel_id[j]) == i) and (set == False):
+                    byte_string = byte_string + '1'
+                    set = True
+            if set == False:
+                byte_string = byte_string + '0'
+        return (pack('B', int(byte_string, 2)))
         
-        ret = (pack('B', int(byte_string, 2)))
-        if sys.version_info > (3,):
-            ret = ret.decode('ascii', 'replace')
-
-        return ret
-
     def on_off_toggle(self, cmd, channel_id):
         '''
         Expected by the server
@@ -322,11 +302,13 @@ class VM201RelayCard(object):
             bit=1 switch channel
         @param cmd: works both with the output status and the timer.
         '''
-
-        change = self.string_of_change(channel_id)
+        
+        if isinstance(channel_id, list):
+            change = self.string_of_change_list(channel_id)
+        else:
+            change = self.string_of_change(channel_id)
         packet = self.tcp_handler.encode(self, cmd, change, channel_id)
-        if sys.version_info > (3,):
-            packet = packet.encode('ascii', 'replace')
+
         self.socket.send(packet)
 
         # If and only if the status has changed, a CMD_STATUS is send by the
